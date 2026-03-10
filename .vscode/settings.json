@@ -1,0 +1,28 @@
+// 团队统一eslint配置
+{
+  // 启用 ESLint 插件
+  "eslint.enable": true,
+  // 保存时自动修复
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.stylelint": "explicit",
+  },
+  "stylelint.validate": ["css"],
+  "css.lint.validProperties": [
+    "composes"
+  ],
+  "css.lint.unknownAtRules": "ignore",
+  "javascript.validate.enable": true,
+  "typescript.validate.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "eslint.workingDirectories": [{ "mode": "location" }],
+  "eslint.options": {
+    "overrideConfigFile": ".eslintrc.js"  // 明确指定项目配置文件
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+}
