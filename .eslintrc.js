@@ -15,7 +15,7 @@ module.exports = {
     // },
   },
   parserOptions: {
-    project: ['./apps/*/tsconfig.json', './packages/*/tsconfig.json'],
+    project: ['./apps/*/tsconfig.json', './tsconfig.base.json'],
   },
   rules: {
     /* eslint */
@@ -23,14 +23,14 @@ module.exports = {
     'max-lines': ['warn', { max: 600, skipComments: true }],
     'no-param-reassign': ['warn', { props: true }],
     /* TypeScript any类型相关规则, 原则上禁用any, 渐进式采用, 先把相关规则都设为warn */
-    '@typescript-eslint/no-redeclare': 'off',
-    '@typescript-eslint/consistent-type-imports': 'warn',
-    '@typescript-eslint/no-explicit-any': 'warn', // 禁止显式 any
-    '@typescript-eslint/no-unsafe-argument': 'warn',
-    '@typescript-eslint/no-unsafe-assignment': 'warn',
-    '@typescript-eslint/no-unsafe-call': 'warn',
-    '@typescript-eslint/no-unsafe-member-access': 'warn',
-    '@typescript-eslint/no-unsafe-return': 'warn',
+    // '@typescript-eslint/no-redeclare': 'off',
+    // '@typescript-eslint/consistent-type-imports': 'warn',
+    // '@typescript-eslint/no-explicit-any': 'warn', // 禁止显式 any
+    // '@typescript-eslint/no-unsafe-argument': 'warn',
+    // '@typescript-eslint/no-unsafe-assignment': 'warn',
+    // '@typescript-eslint/no-unsafe-call': 'warn',
+    // '@typescript-eslint/no-unsafe-member-access': 'warn',
+    // '@typescript-eslint/no-unsafe-return': 'warn',
     /* react */
 
     // 'react/no-deprecated': 'warn',

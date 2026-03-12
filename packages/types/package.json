@@ -1,0 +1,5 @@
+{
+  "name": "agent-types",
+  "private": true,
+  "types": "dist/index.d.ts"
+}
