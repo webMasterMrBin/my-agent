@@ -1,5 +1,13 @@
 import { type AgentSSEEvent } from 'agent-types';
 
+function delay(time = 100) {
+  let start = performance.now();
+  let end = start;
+  while (end - start <= time) {
+    end = performance.now();
+  }
+}
+
 document.getElementById('btn')!.addEventListener('click', async () => {
   console.log('xxx');
   const container = document.getElementById('container');
@@ -60,10 +68,7 @@ document.getElementById('btn')!.addEventListener('click', async () => {
       // 去掉空的事件和初始connected
       if (event && !event.includes(': connected')) {
         const data: AgentSSEEvent<any> = JSON.parse(event.split('\n').at(-1)!.slice('data: '.length));
-        if (data.type === 'text_delta') {
-          console.log('data.data.delta', data.data.delta);
-          handleEventData(data);
-        }
+        handleEventData(data);
       }
     });
 

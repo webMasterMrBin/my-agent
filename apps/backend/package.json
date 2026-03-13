@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build:watch": "tsc -w",
-    "start": "concurrently \"npm run build:watch\" \"node --watch ./dist/app.js\""
+    "start": "concurrently \"npm run build:watch\" \"NODE_ENV=development USE_MOCK=true node --watch ./dist/app.js\""
   },
   "devDependencies": {
     "@types/express": "^4.17.25",

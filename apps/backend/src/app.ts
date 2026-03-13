@@ -3,6 +3,7 @@ import path from 'path';
 import OpenAI, { APIError } from 'openai';
 import type { AgentSSEEvent } from 'agent-types';
 import { v4 as uuid } from 'uuid';
+import { mockStreamEvents, creatMockStreamEvents } from './mock';
 
 const openai = new OpenAI({
   apiKey: 'sk-c4d80774d6fe4f1b8463792a049560f2',
@@ -10,6 +11,8 @@ const openai = new OpenAI({
 });
 
 const app = express();
+const isMock = process.env.USE_MOCK === 'true';
+console.log('isMock', isMock);
 
 app.use('/public', express.static(path.resolve(__dirname, '../../../public')));
 app.use(express.json());
@@ -28,7 +31,8 @@ function delay(time = 1000) {
 }
 
 app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>, res) => {
-  let sseIsClosed = false;
+  let sseIsFinished = false;
+  let clientGone = false;
   function writeSSE<Usage>({ id, data }: { id: string; data: AgentSSEEvent<Usage> }) {
     res.write(`event: message\n`);
     res.write(`id: ${id}\n`);
@@ -44,13 +48,44 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
 
   // 初始一条注释（SSE允许以:开头作为注释/心跳）
   res.write(`: connected\n\n`);
-  // console.log('req.body', req.body);
+
+  // 客户端中途取消了请求
+  req.on('aborted', () => {
+    clientGone = true;
+    console.log('[req aborted]');
+    clearInterval(heartbeat);
+  });
+
+  // request 对象/底层连接生命周期结束
+  req.on('close', () => {
+    console.log('[req close]', {
+      aborted: req.aborted,
+      complete: req.complete,
+    });
+  });
+
+  // 响应正常写完并 end() 后
+  res.on('finish', () => {
+    sseIsFinished = true;
+    console.log('[res finish]');
+  });
+
+  // 响应对应连接关闭
+  res.on('close', () => {
+    clientGone = true;
+    console.log('[res close]', {
+      writableEnded: res.writableEnded,
+      destroyed: res.destroyed,
+      finished: res.writableFinished,
+    });
+  });
 
   // 心跳（可选）：防止某些代理/浏览器断开空闲连接
   const heartbeat = setInterval(() => {
     res.write(`: connected ping ${Date.now()}\n\n`);
   }, 15000);
 
+  /* NOTE真实ai 
   const stream = await openai.chat.completions.create({
     model: 'qwen-plus',
     messages: [{ role: 'user', content: req.body.message }],
@@ -58,15 +93,7 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
     stream_options: {
       include_usage: true,
     },
-  });
-
-  // 客户端断开时清理资源
-  req.on('close', () => {
-    sseIsClosed = true;
-    clearInterval(heartbeat);
-    stream.controller.abort();
-    res.end();
-  });
+  }); */
 
   writeSSE({
     id: 'run_started',
@@ -98,8 +125,10 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
   try {
     let fullText = '';
     let usage = null;
-    for await (const event of stream) {
-      if (sseIsClosed) {
+    for await (const event of creatMockStreamEvents()) {
+      console.log('处理流event');
+      if (clientGone || res.writableEnded || res.destroyed) {
+        console.log('stop streaming because client/res is closed');
         break;
       }
       if (event.usage) {
@@ -112,7 +141,6 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
       }
       fullText += delta;
 
-      console.log('event', event);
       writeSSE({
         id: 'text_delta',
         data: {
@@ -129,7 +157,7 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
       });
     }
 
-    if (!sseIsClosed) {
+    if (!clientGone || res.writableEnded) {
       writeSSE({
         id: 'text_completed',
         data: {
@@ -189,9 +217,12 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
       },
     });
   } finally {
-    sseIsClosed = true;
+    console.log('finally!!!!!');
+    sseIsFinished = true;
     clearInterval(heartbeat);
-    stream.controller.abort();
+    if (!isMock) {
+      stream.controller.abort();
+    }
     res.end();
   }
 });
