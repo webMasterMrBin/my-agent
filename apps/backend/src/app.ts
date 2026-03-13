@@ -31,7 +31,6 @@ function delay(time = 1000) {
 }
 
 app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>, res) => {
-  let sseIsFinished = false;
   let clientGone = false;
   function writeSSE<Usage>({ id, data }: { id: string; data: AgentSSEEvent<Usage> }) {
     res.write(`event: message\n`);
@@ -48,6 +47,16 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
 
   // 初始一条注释（SSE允许以:开头作为注释/心跳）
   res.write(`: connected\n\n`);
+
+  /* NOTE真实ai */
+  const stream = await openai.chat.completions.create({
+    model: 'qwen-plus',
+    messages: [{ role: 'user', content: req.body.message }],
+    stream: true,
+    stream_options: {
+      include_usage: true,
+    },
+  });
 
   // 客户端中途取消了请求
   req.on('aborted', () => {
@@ -66,11 +75,10 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
 
   // 响应正常写完并 end() 后
   res.on('finish', () => {
-    sseIsFinished = true;
     console.log('[res finish]');
   });
 
-  // 响应对应连接关闭
+  // 响应对应连接关闭（断开/关闭客户端页会触发这个）
   res.on('close', () => {
     clientGone = true;
     console.log('[res close]', {
@@ -78,22 +86,14 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
       destroyed: res.destroyed,
       finished: res.writableFinished,
     });
+    clearInterval(heartbeat);
+    stream.controller.abort();
   });
 
   // 心跳（可选）：防止某些代理/浏览器断开空闲连接
   const heartbeat = setInterval(() => {
     res.write(`: connected ping ${Date.now()}\n\n`);
   }, 15000);
-
-  /* NOTE真实ai 
-  const stream = await openai.chat.completions.create({
-    model: 'qwen-plus',
-    messages: [{ role: 'user', content: req.body.message }],
-    stream: true,
-    stream_options: {
-      include_usage: true,
-    },
-  }); */
 
   writeSSE({
     id: 'run_started',
@@ -125,7 +125,7 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
   try {
     let fullText = '';
     let usage = null;
-    for await (const event of creatMockStreamEvents()) {
+    for await (const event of stream) {
       console.log('处理流event');
       if (clientGone || res.writableEnded || res.destroyed) {
         console.log('stop streaming because client/res is closed');
@@ -218,11 +218,7 @@ app.post('/api/agent/stream', async (req: Request<{}, any, { message: string }>,
     });
   } finally {
     console.log('finally!!!!!');
-    sseIsFinished = true;
     clearInterval(heartbeat);
-    if (!isMock) {
-      stream.controller.abort();
-    }
     res.end();
   }
 });

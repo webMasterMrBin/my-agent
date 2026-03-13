@@ -11,6 +11,11 @@ function delay(time = 100) {
 document.getElementById('btn')!.addEventListener('click', async () => {
   console.log('xxx');
   const container = document.getElementById('container');
+  const stopBtn = document.getElementById('stop');
+  const controller = new AbortController();
+  stopBtn?.addEventListener('click', () => {
+    controller.abort();
+  });
   const res = await fetch('/api/agent/stream', {
     method: 'POST',
     headers: {
@@ -20,6 +25,7 @@ document.getElementById('btn')!.addEventListener('click', async () => {
     body: JSON.stringify({
       message: '你好',
     }),
+    signal: controller.signal,
   });
 
   const reader = res.body?.getReader();

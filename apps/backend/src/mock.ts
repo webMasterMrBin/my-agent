@@ -135,7 +135,7 @@ async function* creatMockStreamEvents() {
       new Promise<OpenAI.Chat.Completions.ChatCompletionChunk>(res =>
         setTimeout(() => {
           res(v);
-        }, 300)
+        }, 1000)
       )
   );
   for (const task of tasks) {
